@@ -1,7 +1,7 @@
 // pedido_screen.dart
 
 import 'package:flutter/material.dart';
-import 'menu_screen.dart'; // Asegúrate de que esta ruta sea correcta
+import 'menu_screen.dart';
 
 class PedidoScreen extends StatelessWidget {
   final String nombre;
@@ -11,8 +11,8 @@ class PedidoScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Calcular el total del pedido
-    double total = pedidos.fold(0, (sum, item) => sum + item.price);
+    // Calcular el total del pedido, multiplicando precio por cantidad
+    double total = pedidos.fold(0, (sum, item) => sum + (item.price * item.getQuantity()));
 
     return Scaffold(
       appBar: AppBar(
@@ -34,15 +34,17 @@ class PedidoScreen extends StatelessWidget {
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
             ),
             SizedBox(height: 10),
-            // Lista de elementos pedidos
+            // Lista de elementos pedidos con sus cantidades y subtotal
             Expanded(
               child: ListView.builder(
                 itemCount: pedidos.length,
                 itemBuilder: (context, index) {
+                  final item = pedidos[index];
+                  final itemTotal = item.price * item.getQuantity();
+
                   return ListTile(
-                    title: Text(pedidos[index].name),
-                    trailing:
-                    Text('\$ ${pedidos[index].price.toStringAsFixed(0)}'),
+                    title: Text('${item.name} (x${item.getQuantity()})'),
+                    trailing: Text('\$ ${itemTotal.toStringAsFixed(0)}'),
                   );
                 },
               ),
@@ -68,8 +70,7 @@ class PedidoScreen extends StatelessWidget {
               },
               child: Text('Volver al Menú'),
               style: ElevatedButton.styleFrom(
-                padding:
-                EdgeInsets.symmetric(horizontal: 50, vertical: 15),
+                padding: EdgeInsets.symmetric(horizontal: 50, vertical: 15),
               ),
             ),
           ],

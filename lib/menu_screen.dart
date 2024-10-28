@@ -15,7 +15,7 @@ class _MenuScreenState extends State<MenuScreen> {
   // Clave para el formulario
   final _formKey = GlobalKey<FormState>();
 
-  // Lista de elementos del menú con su selección
+  // Lista de elementos del menú con su selección y cantidad
   final List<MenuItem> _menuItems = [
     MenuItem(name: 'Café Americano', price: 9000),
     MenuItem(name: 'Café Latte', price: 12000),
@@ -26,30 +26,37 @@ class _MenuScreenState extends State<MenuScreen> {
 
   @override
   void dispose() {
-    // Limpiar el controlador cuando el widget se destruye
     _nombreController.dispose();
+    for (var item in _menuItems) {
+      item.quantityController.dispose();
+    }
     super.dispose();
   }
 
-  // Método para manejar el pedido
+  void _resetForm() {
+    setState(() {
+      _nombreController.clear();
+      for (var item in _menuItems) {
+        item.isSelected = false;
+        item.quantityController.clear();
+      }
+    });
+  }
+
   void _realizarPedido() {
     if (_formKey.currentState!.validate()) {
-      // Obtener el nombre
       String nombre = _nombreController.text.trim();
-
-      // Obtener los elementos seleccionados
-      List<MenuItem> seleccionados =
-      _menuItems.where((item) => item.isSelected).toList();
+      List<MenuItem> seleccionados = _menuItems
+          .where((item) => item.isSelected && item.getQuantity() > 0)
+          .toList();
 
       if (seleccionados.isEmpty) {
-        // Mostrar un mensaje si no se ha seleccionado ningún elemento
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Por favor, selecciona al menos un elemento del menú')),
+          SnackBar(content: Text('Por favor, selecciona al menos un elemento del menú y especifica la cantidad')),
         );
         return;
       }
 
-      // Navegar a PedidoScreen pasando los datos
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -58,7 +65,7 @@ class _MenuScreenState extends State<MenuScreen> {
             pedidos: seleccionados,
           ),
         ),
-      );
+      ).then((_) => _resetForm());
     }
   }
 
@@ -71,11 +78,10 @@ class _MenuScreenState extends State<MenuScreen> {
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Form(
-          key: _formKey, // Asignar la clave al formulario
+          key: _formKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Campo para ingresar el nombre
               Text(
                 'Ingresa tu nombre:',
                 style: TextStyle(fontSize: 18),
@@ -84,51 +90,87 @@ class _MenuScreenState extends State<MenuScreen> {
               TextFormField(
                 controller: _nombreController,
                 decoration: InputDecoration(
-                  border: OutlineInputBorder(),
+                  border: OutlineInputBorder(
+                    borderSide: BorderSide(color: Colors.brown),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: Colors.brown),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: Colors.brown, width: 2),
+                  ),
                   labelText: 'Nombre',
                 ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
                     return 'Por favor, ingresa tu nombre';
                   }
-                  return null; // Campo válido
+                  return null;
                 },
               ),
               SizedBox(height: 20),
-              // Título del menú
               Text(
                 'Menú:',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               SizedBox(height: 10),
-              // Lista de elementos del menú con selección
               Expanded(
                 child: ListView.builder(
                   itemCount: _menuItems.length,
                   itemBuilder: (context, index) {
-                    return CheckboxListTile(
-                      title: Text(
-                          '${_menuItems[index].name} - \$ ${_menuItems[index].price.toStringAsFixed(0)}'),
-                      value: _menuItems[index].isSelected,
-                      onChanged: (bool? value) {
-                        setState(() {
-                          _menuItems[index].isSelected = value ?? false;
-                        });
-                      },
-                      secondary: Icon(Icons.local_cafe, color: Colors.brown),
+                    return Column(
+                      children: [
+                        CheckboxListTile(
+                          title: Text(
+                              '${_menuItems[index].name} - \$ ${_menuItems[index].price.toStringAsFixed(0)}'),
+                          value: _menuItems[index].isSelected,
+                          onChanged: (bool? value) {
+                            setState(() {
+                              _menuItems[index].isSelected = value ?? false;
+                            });
+                          },
+                          secondary: Icon(Icons.local_cafe, color: Colors.orange),
+                        ),
+                        if (_menuItems[index].isSelected)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: TextField(
+                                    controller: _menuItems[index].quantityController,
+                                    decoration: InputDecoration(
+                                      labelText: 'Cantidad',
+                                      border: OutlineInputBorder(
+                                        borderSide: BorderSide(color: Colors.brown),
+                                      ),
+                                      enabledBorder: OutlineInputBorder(
+                                        borderSide: BorderSide(color: Colors.brown),
+                                      ),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderSide: BorderSide(color: Colors.brown, width: 2),
+                                      ),
+                                    ),
+                                    keyboardType: TextInputType.number,
+                                  ),
+                                ),
+                                SizedBox(width: 10),
+                                Text('unidades'),
+                              ],
+                            ),
+                          ),
+                      ],
                     );
                   },
                 ),
               ),
               SizedBox(height: 20),
-              // Botón para realizar el pedido
               Center(
                 child: ElevatedButton(
                   onPressed: _realizarPedido,
                   child: Text('Realizar Pedido'),
                   style: ElevatedButton.styleFrom(
-                    padding:
-                    EdgeInsets.symmetric(horizontal: 50, vertical: 15),
+                    padding: EdgeInsets.symmetric(horizontal: 50, vertical: 15),
                   ),
                 ),
               ),
@@ -140,15 +182,19 @@ class _MenuScreenState extends State<MenuScreen> {
   }
 }
 
-// Clase para representar un elemento del menú
 class MenuItem {
   final String name;
   final double price;
   bool isSelected;
+  final TextEditingController quantityController;
 
   MenuItem({
     required this.name,
     required this.price,
     this.isSelected = false,
-  });
+  }) : quantityController = TextEditingController();
+
+  int getQuantity() {
+    return int.tryParse(quantityController.text) ?? 0;
+  }
 }
